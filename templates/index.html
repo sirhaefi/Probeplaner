@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Probenplaner</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --ink:       #1a1a1a;
+    --ink-2:     #4a4a4a;
+    --ink-3:     #8a8a8a;
+    --bg:        #f8f7f4;
+    --bg-card:   #ffffff;
+    --border:    #e2e0db;
+    --accent:    #b5452a;
+    --accent-bg: #fdf1ee;
+    --green:     #2a6b3a;
+    --green-bg:  #eef6f0;
+    --radius:    10px;
+    --shadow:    0 1px 4px rgba(0,0,0,.07), 0 4px 16px rgba(0,0,0,.05);
+  }
+  body { font-family: Georgia, 'Times New Roman', serif; background: var(--bg); color: var(--ink); min-height: 100vh; }
+
+  header {
+    background: var(--ink); color: #fff;
+    padding: 18px 40px; display: flex; align-items: center; justify-content: space-between;
+  }
+  .header-left { display: flex; align-items: baseline; gap: 14px; }
+  header h1 { font-size: 21px; font-weight: 400; }
+  header span.sub { font-family: 'Helvetica Neue', sans-serif; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: #999; }
+
+  .login-btn {
+    background: #fff; color: var(--ink); border: none; border-radius: 7px;
+    padding: 8px 18px; font-family: 'Helvetica Neue', sans-serif; font-size: 13px;
+    cursor: pointer; display: flex; align-items: center; gap: 8px; text-decoration: none;
+  }
+  .login-btn:hover { background: #eee; }
+  .login-btn svg { width: 16px; height: 16px; }
+  .logout-btn {
+    background: transparent; color: #aaa; border: 1px solid #444; border-radius: 7px;
+    padding: 6px 14px; font-family: 'Helvetica Neue', sans-serif; font-size: 12px;
+    cursor: pointer; text-decoration: none;
+  }
+  .logout-btn:hover { color: #fff; border-color: #777; }
+
+  .shell { max-width: 1060px; margin: 0 auto; padding: 32px 24px; }
+
+  /* Login gate */
+  #login-gate {
+    text-align: center; padding: 80px 32px;
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow); margin-top: 40px;
+  }
+  #login-gate h2 { font-size: 22px; font-weight: 400; margin-bottom: 10px; }
+  #login-gate p { font-family: 'Helvetica Neue', sans-serif; font-size: 14px; color: var(--ink-3); margin-bottom: 28px; }
+
+  /* App sections */
+  .section { display: none; }
+  .section.visible { display: block; }
+
+  /* Panel */
+  .panel {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 20px; overflow: hidden;
+  }
+  .panel-head {
+    background: var(--ink); color: #fff; padding: 13px 20px;
+    display: flex; align-items: center; justify-content: space-between;
+    font-family: 'Helvetica Neue', sans-serif; font-size: 11px; letter-spacing: .09em; text-transform: uppercase;
+  }
+  .panel-head button {
+    background: var(--accent); color: #fff; border: none; border-radius: 6px;
+    padding: 5px 13px; font-size: 12px; cursor: pointer; font-family: inherit; letter-spacing: .04em;
+  }
+  .panel-head button:hover { opacity: .85; }
+
+  /* Controls */
+  #controls {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+    padding: 16px 20px; margin-bottom: 20px;
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  }
+  #controls label { font-family: 'Helvetica Neue', sans-serif; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+  #plan-select {
+    font-family: 'Helvetica Neue', sans-serif; font-size: 14px;
+    padding: 7px 12px; border: 1px solid var(--border); border-radius: 6px;
+    background: var(--bg); color: var(--ink); cursor: pointer;
+  }
+  #run-btn {
+    margin-left: auto; background: var(--accent); color: #fff; border: none;
+    border-radius: 7px; padding: 9px 22px;
+    font-family: 'Helvetica Neue', sans-serif; font-size: 13px; cursor: pointer;
+  }
+  #run-btn:hover { opacity: .88; }
+  #run-btn:disabled { opacity: .4; cursor: default; }
+
+  /* Scene list */
+  #scene-list { padding: 12px 20px; }
+  .scene-row {
+    display: grid; grid-template-columns: 180px 1fr auto;
+    gap: 10px; align-items: start; padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .scene-row:last-child { border-bottom: none; }
+  .scene-row input[type=text] {
+    font-family: 'Helvetica Neue', sans-serif; font-size: 13px;
+    padding: 6px 10px; border: 1px solid var(--border);
+    border-radius: 6px; background: var(--bg); color: var(--ink); width: 100%;
+  }
+  .scene-row input:focus { outline: 2px solid var(--accent); border-color: transparent; }
+  .actors-select {
+    display: flex; flex-wrap: wrap; gap: 6px; min-height: 36px;
+    padding: 5px 8px; border: 1px solid var(--border); border-radius: 6px;
+    background: var(--bg); cursor: pointer;
+  }
+  .actor-chip {
+    background: var(--accent-bg); color: var(--accent);
+    border: 1px solid #e8c0b4; border-radius: 4px;
+    font-family: 'Helvetica Neue', sans-serif; font-size: 11px;
+    padding: 2px 7px; white-space: nowrap;
+  }
+  .actor-chip.placeholder { color: var(--ink-3); background: none; border: none; font-size: 13px; }
+  .del-btn {
+    background: none; border: none; color: var(--ink-3); font-size: 18px;
+    cursor: pointer; line-height: 1; padding: 4px; border-radius: 4px;
+  }
+  .del-btn:hover { color: var(--accent); background: var(--accent-bg); }
+
+  /* Picker */
+  .picker-overlay { display: none; position: fixed; inset: 0; z-index: 100; }
+  .picker-overlay.open { display: block; }
+  .picker-box {
+    position: absolute; background: var(--bg-card);
+    border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: 0 8px 32px rgba(0,0,0,.14);
+    width: 320px; max-height: 300px;
+    display: flex; flex-direction: column; overflow: hidden; z-index: 101;
+  }
+  .picker-search { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  .picker-search input {
+    width: 100%; font-family: 'Helvetica Neue', sans-serif; font-size: 13px;
+    border: 1px solid var(--border); border-radius: 6px;
+    padding: 6px 10px; background: var(--bg);
+  }
+  .picker-search input:focus { outline: 2px solid var(--accent); border-color: transparent; }
+  .picker-list { overflow-y: auto; flex: 1; }
+  .picker-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 14px; cursor: pointer;
+    font-family: 'Helvetica Neue', sans-serif; font-size: 13px;
+  }
+  .picker-item:hover { background: var(--accent-bg); }
+  .picker-item.checked { background: var(--green-bg); }
+  .picker-item .check { color: var(--green); width: 16px; }
+
+  /* Results */
+  .results-head {
+    font-family: 'Helvetica Neue', sans-serif; font-size: 11px;
+    letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 14px;
+  }
+  .date-card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 10px; overflow: hidden;
+  }
+  .date-card-head {
+    padding: 13px 20px; display: flex; align-items: baseline; gap: 12px;
+    border-bottom: 1px solid var(--border); cursor: pointer; user-select: none;
+  }
+  .date-card-head:hover { background: #fafaf8; }
+  .date-label { font-size: 17px; }
+  .time-label { font-family: 'Helvetica Neue', sans-serif; font-size: 12px; color: var(--ink-3); }
+  .scene-count { margin-left: auto; font-family: 'Helvetica Neue', sans-serif; font-size: 12px; color: var(--accent); }
+  .chevron { color: var(--ink-3); font-size: 13px; transition: transform .2s; margin-left: 4px; }
+  .chevron.open { transform: rotate(90deg); }
+  .date-card-body { padding: 0 20px; }
+  .date-card-body.hidden { display: none; }
+  .scene-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 0; border-bottom: 1px solid var(--border);
+  }
+  .scene-item:last-child { border-bottom: none; }
+  .scene-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+  .scene-name { font-size: 15px; }
+  .scene-actors { font-family: 'Helvetica Neue', sans-serif; font-size: 12px; color: var(--ink-3); margin-left: auto; text-align: right; max-width: 380px; }
+  .no-scenes { padding: 13px 0; font-family: 'Helvetica Neue', sans-serif; font-size: 13px; color: var(--ink-3); font-style: italic; }
+
+  #status { font-family: 'Helvetica Neue', sans-serif; font-size: 13px; color: var(--ink-3); padding: 8px 0; min-height: 24px; }
+  .error { color: var(--accent) !important; }
+
+  .spinner {
+    display: inline-block; width: 14px; height: 14px;
+    border: 2px solid var(--border); border-top-color: var(--accent);
+    border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle; margin-right: 6px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <h1>Probenplaner</h1>
+    <span class="sub">Theater · Verfügbarkeitsanalyse</span>
+  </div>
+  <div id="auth-area"></div>
+</header>
+
+<div class="shell">
+
+  <!-- Login gate -->
+  <div id="login-gate">
+    <h2>Anmelden um zu starten</h2>
+    <p>Der Probenplaner liest deine Verfügbarkeiten direkt aus Google Sheets.</p>
+    <a class="login-btn" href="/auth/login">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+      </svg>
+      Mit Google anmelden
+    </a>
+  </div>
+
+  <!-- App (shown when logged in) -->
+  <div id="app" class="section">
+    <div id="status"></div>
+
+    <!-- Szenenliste -->
+    <div class="panel">
+      <div class="panel-head">
+        <span>Szenenliste</span>
+        <button onclick="addScene()">+ Szene hinzufügen</button>
+      </div>
+      <div id="scene-list"></div>
+    </div>
+
+    <!-- Controls -->
+    <div id="controls">
+      <label>Probeplan</label>
+      <select id="plan-select"></select>
+      <button id="run-btn" onclick="runAnalysis()">Proben berechnen</button>
+    </div>
+
+    <!-- Results -->
+    <div id="results" style="display:none">
+      <p class="results-head" id="results-head"></p>
+      <div id="results-list"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Picker overlay -->
+<div class="picker-overlay" id="picker-overlay" onclick="closePicker(event)">
+  <div class="picker-box" id="picker-box">
+    <div class="picker-search">
+      <input type="text" id="picker-search" placeholder="Schauspieler suchen…" oninput="filterPicker(this.value)">
+    </div>
+    <div class="picker-list" id="picker-list"></div>
+  </div>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+let allActors = [];
+let scenes    = [];
+let activeSceneId = null;
+let sceneIdMap    = {};  // local temp id → server id
+
+// ── Init ───────────────────────────────────────────────────────────────────
+async function init() {
+  const res  = await fetch("/auth/me");
+  const data = await res.json();
+  if (!data.logged_in) {
+    document.getElementById("login-gate").style.display = "block";
+    document.getElementById("auth-area").innerHTML = `<a class="login-btn" href="/auth/login">
+      <svg viewBox="0 0 24 24" width="16" height="16"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84z" fill="#EA4335"/></svg>
+      Anmelden</a>`;
+    return;
+  }
+  document.getElementById("login-gate").style.display = "none";
+  document.getElementById("app").classList.add("visible");
+  document.getElementById("auth-area").innerHTML = `<a class="logout-btn" href="/auth/logout">Abmelden</a>`;
+  await Promise.all([loadTabs(), loadScenes()]);
+}
+
+// ── Tabs ───────────────────────────────────────────────────────────────────
+async function loadTabs() {
+  setStatus('<span class="spinner"></span>Tabs werden geladen…');
+  const res  = await fetch("/api/sheets/tabs");
+  const data = await res.json();
+  const sel  = document.getElementById("plan-select");
+  sel.innerHTML = "";
+  data.tabs.forEach(t => {
+    const o = document.createElement("option");
+    o.value = t; o.textContent = t;
+    sel.appendChild(o);
+  });
+  // Load actors from first tab
+  await loadActors(data.tabs[0]);
+  setStatus("");
+}
+
+async function loadActors(tab) {
+  const res  = await fetch(`/api/sheets/data/${encodeURIComponent(tab)}`);
+  const data = await res.json();
+  const rows = data.rows;
+  allActors  = [];
+  for (let i = 4; i < rows.length; i++) {
+    const row = rows[i];
+    if (!row || row.length < 2) continue;
+    const name    = String(row[0] || "").trim();
+    const vorname = String(row[1] || "").trim();
+    if (name && vorname) allActors.push({ name, vorname });
+  }
+}
+
+// ── Scenes ─────────────────────────────────────────────────────────────────
+async function loadScenes() {
+  const res  = await fetch("/api/scenes");
+  const data = await res.json();
+  scenes = data.scenes;
+  renderSceneList();
+}
+
+async function addScene() {
+  const res  = await fetch("/api/scenes", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: "Neue Szene", actors: [] })
+  });
+  const scene = await res.json();
+  scenes.push(scene);
+  renderSceneList();
+}
+
+async function removeScene(id) {
+  await fetch(`/api/scenes/${id}`, { method: "DELETE" });
+  scenes = scenes.filter(s => s.id !== id);
+  renderSceneList();
+}
+
+async function saveScene(id) {
+  const scene = scenes.find(s => s.id === id);
+  if (!scene) return;
+  await fetch(`/api/scenes/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: scene.name, actors: scene.actors })
+  });
+}
+
+function renderSceneList() {
+  const list = document.getElementById("scene-list");
+  if (!scenes.length) {
+    list.innerHTML = '<p style="padding:16px 20px;font-family:Helvetica Neue,sans-serif;font-size:13px;color:var(--ink-3)">Noch keine Szenen. Klicke auf «+ Szene hinzufügen».</p>';
+    return;
+  }
+  list.innerHTML = scenes.map(s => `
+    <div class="scene-row" data-id="${s.id}">
+      <input type="text" value="${esc(s.name)}"
+        onchange="updateName(${s.id}, this.value)"
+        oninput="updateName(${s.id}, this.value)">
+      <div class="actors-select" onclick="openPicker(${s.id}, this)">
+        ${s.actors.length === 0
+          ? '<span class="actor-chip placeholder">Schauspieler wählen…</span>'
+          : s.actors.map(a => `<span class="actor-chip">${esc(a.vorname)} ${esc(a.name)}</span>`).join("")}
+      </div>
+      <button class="del-btn" onclick="removeScene(${s.id})">×</button>
+    </div>`).join("");
+}
+
+function updateName(id, val) {
+  const s = scenes.find(s => s.id === id);
+  if (s) { s.name = val; clearTimeout(s._t); s._t = setTimeout(() => saveScene(id), 600); }
+}
+
+// ── Actor Picker ────────────────────────────────────────────────────────────
+function openPicker(sceneId, el) {
+  activeSceneId = sceneId;
+  const box  = document.getElementById("picker-box");
+  const rect = el.getBoundingClientRect();
+  box.style.top  = (rect.bottom + 4 + window.scrollY) + "px";
+  box.style.left = rect.left + "px";
+  document.getElementById("picker-search").value = "";
+  renderPickerList("");
+  document.getElementById("picker-overlay").classList.add("open");
+  setTimeout(() => document.getElementById("picker-search").focus(), 50);
+}
+
+function closePicker(e) {
+  if (document.getElementById("picker-box").contains(e.target)) return;
+  document.getElementById("picker-overlay").classList.remove("open");
+}
+
+function filterPicker(q) { renderPickerList(q); }
+
+function renderPickerList(q) {
+  const scene    = scenes.find(s => s.id === activeSceneId);
+  const filtered = allActors.filter(a =>
+    (a.vorname + " " + a.name).toLowerCase().includes(q.toLowerCase())
+  );
+  document.getElementById("picker-list").innerHTML = filtered.map(a => {
+    const checked = scene && scene.actors.some(sa => sa.name === a.name && sa.vorname === a.vorname);
+    return `<div class="picker-item ${checked ? "checked" : ""}" onclick="toggleActor('${esc(a.name)}','${esc(a.vorname)}')">
+      <span class="check">${checked ? "✓" : ""}</span>
+      ${esc(a.vorname)} ${esc(a.name)}
+    </div>`;
+  }).join("");
+}
+
+async function toggleActor(name, vorname) {
+  const scene = scenes.find(s => s.id === activeSceneId);
+  if (!scene) return;
+  const idx = scene.actors.findIndex(a => a.name === name && a.vorname === vorname);
+  if (idx >= 0) scene.actors.splice(idx, 1);
+  else scene.actors.push({ name, vorname });
+  renderPickerList(document.getElementById("picker-search").value);
+  renderSceneList();
+  await saveScene(activeSceneId);
+}
+
+// ── Analyse ────────────────────────────────────────────────────────────────
+async function runAnalysis() {
+  const tab = document.getElementById("plan-select").value;
+  const btn = document.getElementById("run-btn");
+  btn.disabled = true;
+  setStatus('<span class="spinner"></span>Wird berechnet…');
+  try {
+    const res  = await fetch("/api/analyse", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tab })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Fehler");
+    renderResults(data.results, tab);
+    setStatus("");
+  } catch(e) {
+    setStatus("Fehler: " + e.message, true);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function renderResults(results, tab) {
+  const container = document.getElementById("results");
+  container.style.display = "block";
+  const withScenes = results.filter(r => r.scenes.length > 0).length;
+  document.getElementById("results-head").textContent =
+    `${tab} · ${results.length} Termine · ${withScenes} mit probebaren Szenen`;
+  document.getElementById("results-list").innerHTML = results.map(r => `
+    <div class="date-card">
+      <div class="date-card-head" onclick="toggleCard(this)">
+        <span class="date-label">${esc(r.date)}</span>
+        <span class="time-label">${esc(r.time)}</span>
+        ${r.scenes.length
+          ? `<span class="scene-count">${r.scenes.length} Szene${r.scenes.length > 1 ? "n" : ""}</span>`
+          : `<span class="scene-count" style="color:var(--ink-3)">keine Szenen</span>`}
+        <span class="chevron">▶</span>
+      </div>
+      <div class="date-card-body hidden">
+        ${r.scenes.length
+          ? r.scenes.map(s => `
+            <div class="scene-item">
+              <span class="scene-dot"></span>
+              <span class="scene-name">${esc(s.name)}</span>
+              <span class="scene-actors">${s.actors.map(a => a.vorname + " " + a.name).join(", ")}</span>
+            </div>`).join("")
+          : '<p class="no-scenes">Keine Szene vollständig besetzt.</p>'
+        }
+      </div>
+    </div>`).join("");
+}
+
+function toggleCard(h) {
+  h.nextElementSibling.classList.toggle("hidden");
+  h.querySelector(".chevron").classList.toggle("open");
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+function setStatus(msg, err) {
+  const el = document.getElementById("status");
+  el.innerHTML = msg;
+  el.className = err ? "error" : "";
+}
+
+init();
+</script>
+</body>
+</html>
